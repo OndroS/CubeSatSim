@@ -35,6 +35,14 @@
 #include <wiringPi.h>
 #include <time.h>
 #include "ina219.h"
+#include <unistd.h> 
+#include <stdio.h> 
+#include <sys/socket.h> 
+#include <stdlib.h> 
+#include <netinet/in.h> 
+#include <string.h> 
+#include <arpa/inet.h>
+#define PORT 8080
 
 // Put your callsign here
 #define CALLSIGN "KU2Y"
@@ -79,6 +87,8 @@ int upper_digit(int number);
 int lower_digit(int number);
 int charging = 0;
 
+int dataviz = 1;
+
 uint16_t config = (0x2000 | 0x1800 | 0x0180 | 0x0018 | 0x0007 );
 
 int x_fd;	// I2C bus 0 address 0x40
@@ -90,6 +100,37 @@ int z_fd; 	// I2C bos 0 address 0x44
 
 
 int main(void) {
+
+//  socket_test();
+
+    struct sockaddr_in address; 
+    int sock = 0, valread; 
+    struct sockaddr_in serv_addr; 
+    char *hello = "Hello from client"; 
+    char buffer[1024] = {0}; 
+    if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) 
+    { 
+        printf("\n Socket creation error \n"); 
+        dataviz = 0; 
+    } 
+   
+    memset(&serv_addr, '0', sizeof(serv_addr)); 
+   
+    serv_addr.sin_family = AF_INET; 
+    serv_addr.sin_port = htons(PORT); 
+       
+    // Convert IPv4 and IPv6 addresses from text to binary form 
+    if(inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr)<=0)  
+    { 
+        printf("\nInvalid address/ Address not supported \n"); 
+        dataviz = 0; 
+    } 
+   
+    if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) 
+    { 
+        printf("\nConnection Failed \n"); 
+        dataviz = 0; 
+    } 
 
   wiringPiSetup () ;
   pinMode (0, OUTPUT) ;
@@ -231,6 +272,14 @@ int main(void) {
 //      	   printf("LED state: %s\n", cmdbuffer);
         }
 */
+	 if(dataviz)    { 
+	   fprintf(stderr,"INFO: Sending telem over socket\n");
+           send(sock , &str[2] , strlen(str) - 2 , 0 ); 
+           printf("telem  message sent\n"); 
+           valread = read( sock , buffer, 1024); 
+           printf("%s\n",buffer );  
+       }
+ 
 	fprintf(stderr,"INFO: Transmitting X.25 packet\n");
 
         memcpy(data, str, strnlen(str, 256));
@@ -412,4 +461,41 @@ int get_tlm(int tlm[][5]) {
     printf("\n");
     }	
        return 0;
+}
+
+int socket_test() 
+{ 
+    struct sockaddr_in address; 
+    int sock = 0, valread; 
+    struct sockaddr_in serv_addr; 
+    char *hello = "Hello from client"; 
+    char buffer[1024] = {0}; 
+    if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) 
+    { 
+        printf("\n Socket creation error \n"); 
+        return -1; 
+    } 
+   
+    memset(&serv_addr, '0', sizeof(serv_addr)); 
+   
+    serv_addr.sin_family = AF_INET; 
+    serv_addr.sin_port = htons(PORT); 
+       
+    // Convert IPv4 and IPv6 addresses from text to binary form 
+    if(inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr)<=0)  
+    { 
+        printf("\nInvalid address/ Address not supported \n"); 
+        return -1; 
+    } 
+   
+    if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) 
+    { 
+        printf("\nConnection Failed \n"); 
+        return -1; 
+    } 
+    send(sock , hello , strlen(hello) , 0 ); 
+    printf("Hello message sent\n"); 
+    valread = read( sock , buffer, 1024); 
+    printf("%s\n",buffer ); 
+    return 0; 
 }
