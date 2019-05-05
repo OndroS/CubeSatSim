@@ -273,7 +273,9 @@ int main(void) {
         }
 */
 	 if(dataviz)    { 
-	   fprintf(stderr,"INFO: Sending telem over socket\n");
+	   char *hello = "20:51:55$ fm KU2Y-1 to CQ-1 UI PID=F0";  
+           fprintf(stderr,"INFO: Sending telem over socket\n");
+           send(sock , hello , strlen(hello) , 0 ); 
            send(sock , &str[2] , strlen(str) - 2 , 0 ); 
            printf("telem  message sent\n"); 
            valread = read( sock , buffer, 1024); 
